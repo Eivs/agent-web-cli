@@ -23,6 +23,8 @@ bash scripts/build.sh all                # 交叉编译 5 个目标（需联网�
 
 没有 lint 脚本，`tsc --noEmit` 是唯一的静态检查。
 
+发版：`package.json` 的 `version` 与 tag 一致后 `git push origin v0.1.1`，`.github/workflows/release.yml` 会跑测试、交叉编译 5 个平台、生成 `SHA256SUMS` 并创建 Release；`install.sh` 从 Release 下载。
+
 ## 架构
 
 ```
@@ -38,6 +40,7 @@ src/cli.ts                     入口：captureProxyEnv() → 按命令动态 im
   commands/search.ts           SearXNG 调用、结果规范化、--read 复用 fetchPage
   commands/map.ts              sitemap 优先，页面链接兜底
   commands/doctor.ts           配置 / 代理 / 试抓取 / 试搜索
+  commands/skill.ts            把内嵌的 SKILL.md 安装到 agent 的 skills 目录
   extract/paginate.ts          block 切分、token 分页、大纲、章节、BM25 相关段落
   skill/web-cli/SKILL.md       给 agent 的使用说明，编译进二进制并由 `web guide` 打印
 ```

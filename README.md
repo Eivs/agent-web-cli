@@ -20,7 +20,17 @@ bun run typecheck # 无类型错误
 
 单文件二进制已用真实依赖构建并运行验证，包含代理环境变量的重新执行路径（见 `DESIGN.md` 3.5）。
 
-## 安装与构建
+## 安装
+
+macOS / Linux 一键安装（下载最新 Release 的单文件二进制，并安装 agent skill）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Eivs/agent-web-cli/main/install.sh | bash
+```
+
+手动下载、从源码构建、升级与卸载见 [INSTALL.md](INSTALL.md)。
+
+## 从源码构建
 
 需要 [Bun](https://bun.sh) ≥ 1.1。
 
@@ -167,8 +177,20 @@ next: "web fetch https://example.com/a --cursor eyJ2Ijox... --max-tokens 3000"
 
 ## 接入 agent
 
-- **作为 Skill**：把 `skill/web-cli/` 目录复制到 agent 的 skills 目录（例如 `~/.claude/skills/web-cli/`），并确保 `web` 在 `PATH` 中。
+- **作为 Skill**：运行 `web skill install`（默认写入 `~/.claude/skills/web-cli/SKILL.md`，`--dir` 可换目录），并确保 `web` 在 `PATH` 中。
 - **不装 Skill**：让 agent 先运行 `web guide`，内容与 `SKILL.md` 一致（二进制内嵌）。
+
+## 发版
+
+CI 在每次 push 和 PR 上跑 `typecheck` + `test`（`.github/workflows/ci.yml`）。发版只需要打 tag，版本号必须与 `package.json` 一致：
+
+```bash
+# 先改 package.json 的 version
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+`.github/workflows/release.yml` 会跑测试、交叉编译 5 个平台的单文件二进制、生成 `SHA256SUMS`，然后创建 GitHub Release；`install.sh` 从该 Release 下载。
 
 ## 项目结构
 

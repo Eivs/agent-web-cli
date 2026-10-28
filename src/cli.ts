@@ -17,6 +17,7 @@ Commands:
   map <url>          List a site's URLs (sitemap first, then page links)
   doctor             Check config, proxy, a test fetch and a test search
   config             Show or initialise configuration
+  skill              Install the agent skill (SKILL.md) for this CLI
   guide              Print the usage guide meant for agents
   help [command]     Show help
 
@@ -46,6 +47,7 @@ async function dispatch(argv: string[]): Promise<CommandResult> {
   }
   if (command === "--version" || command === "-V" || command === "version") return { stdout: `${pkg.version}\n` };
   if (command === "guide") return { stdout: guideText() };
+  if (command === "skill") return (await import("./commands/skill")).runSkill(rest);
 
   if (command === "config") {
     // `web config` works even when the config file is broken enough to fail loadConfig.

@@ -136,7 +136,7 @@ describe("help, guide, version", () => {
   test("help lists the commands and exit codes", async () => {
     const r = await web(["help"]);
     expect(r.code).toBe(0);
-    for (const c of ["fetch", "search", "map", "doctor", "config", "guide"]) expect(r.out).toContain(c);
+    for (const c of ["fetch", "search", "map", "doctor", "config", "skill", "guide"]) expect(r.out).toContain(c);
     expect(r.out).toContain("7=ssrf");
   });
   test("per-command help", async () => {
@@ -565,5 +565,29 @@ describe("doctor", () => {
 
     const noSearch = await web(["doctor", "--url", base + "/json", "--allow-private", "--skip-search"]);
     expect(noSearch.code).toBe(0);
+  });
+});
+
+describe("skill", () => {
+  test("installs SKILL.md with front matter, is idempotent, and protects local edits", async () => {
+    const dir = join(tmp, "skills", "web-cli");
+    const first = await web(["skill", "install", "--dir", dir]);
+    expect(first.code).toBe(0);
+    const text = readFileSync(join(dir, "SKILL.md"), "utf8");
+    expect(text.startsWith("---\nname: web-cli")).toBe(true);
+    expect(text).toContain("web fetch");
+
+    const again = await web(["skill", "install", "--dir", dir]);
+    expect(again.code).toBe(0);
+    expect(again.out).toContain("already up to date");
+
+    writeFileSync(join(dir, "SKILL.md"), "edited locally");
+    const refused = await web(["skill", "install", "--dir", dir]);
+    expect(refused.code).toBe(2);
+    expect(errJson(refused).hint).toContain("--force");
+
+    const forced = await web(["skill", "install", "--dir", dir, "--force"]);
+    expect(forced.code).toBe(0);
+    expect(readFileSync(join(dir, "SKILL.md"), "utf8")).toContain("name: web-cli");
   });
 });
