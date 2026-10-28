@@ -69,7 +69,7 @@ src/cli.ts                     入口：captureProxyEnv() → 按命令动态 im
 1. 对应 `src/commands/*.ts` 里的 `*_HELP` 文本；
 2. `cli.ts` 顶部的 `HELP`（新增命令时）；
 3. `skill/web-cli/SKILL.md`（它被 `cli.ts` 以 `with { type: "text" }` 内嵌，`web guide` 直接打印）；
-4. `README.md`，必要时 `DESIGN.md`。
+4. `README.md` + `README.en.md`、`INSTALL.md` + `INSTALL.en.md`，必要时 `DESIGN.md`（中英文成对维护）。
 
 新增命令的套路：`src/commands/<name>.ts` 导出 `run<Name>(argv, config)`、`<NAME>_HELP`、`<NAME>_OPTIONS`，复用 `commands/common.ts` 的 `parse`/`makeContext`/`mapPool` 和全局选项，然后在 `cli.ts` 的 `switch` 里动态 import。
 

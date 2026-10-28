@@ -1,5 +1,7 @@
 # agent-web-cli (`web`)
 
+中文 | [English](README.en.md)
+
 给 AI agent 用的网页访问命令行工具。通过**本地网络或你配置的 HTTP 代理**访问网页，把页面转成适合模型阅读的 markdown，并用你自己的 **SearXNG** 做搜索。
 
 - `web fetch`：读取页面 → markdown（带元数据头、分页、大纲、按章节读、按问题检索相关段落）
@@ -14,7 +16,7 @@
 
 ```bash
 bun install
-bun test          # 184 个测试全部通过
+bun test          # 185 个测试全部通过
 bun run typecheck # 无类型错误
 ```
 
@@ -200,12 +202,12 @@ src/
   config.ts           配置加载、默认值、打码
   pipeline.ts         fetch 主流程：缓存、cursor、大纲/章节/查询/分页、渲染
   cache.ts, render.ts 磁盘缓存；元数据头与边界标记
-  commands/           fetch search map doctor config
+  commands/           fetch search map doctor config skill
   net/                proxy（路由）ssrf（防护）http（请求）decode（编码）
   extract/            html feed links sitemap detect paginate process
   security/inject.ts  注入提示扫描
 skill/web-cli/SKILL.md  给 agent 的说明
-tests/                net / paginate / http / cli（已运行）、html（待运行）
+tests/                net / paginate / http / cli / html
 scripts/build.sh      单文件编译
 ```
 
@@ -213,4 +215,4 @@ scripts/build.sh      单文件编译
 
 - 只走 HTTP：靠 JavaScript 渲染的页面可能几乎是空的（头里会有警告）。浏览器模式是下一阶段的工作。
 - 不支持登录、PDF、验证码；强反爬站点成功率取决于你的出口 IP。
-- `web map` 的页面链接兜底、HTML 转换质量需要你用真实页面验证（见“验证状态”）。
+- `web map` 的页面链接兜底、HTML 转换质量仍需用真实页面持续验证。

@@ -1,5 +1,7 @@
 # 安装与升级
 
+中文 | [English](INSTALL.en.md)
+
 `web` 是一个单文件二进制，内嵌 Bun 运行时，不需要预先安装任何运行时。
 
 ## 一键安装（macOS / Linux）
