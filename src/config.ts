@@ -78,12 +78,12 @@ export function defaultConfig(): Config {
 export function configPath(env: NodeJS.ProcessEnv = process.env): string {
   if (env.WEB_CONFIG) return env.WEB_CONFIG;
   const base = env.XDG_CONFIG_HOME || join(homedir(), ".config");
-  return join(base, "agent-web", "config.json");
+  return join(base, "agent-web-cli", "config.json");
 }
 
 export function cacheDir(env: NodeJS.ProcessEnv = process.env): string {
   const base = env.XDG_CACHE_HOME || join(homedir(), ".cache");
-  return join(base, "agent-web");
+  return join(base, "agent-web-cli");
 }
 
 function isObject(v: unknown): v is Record<string, unknown> {

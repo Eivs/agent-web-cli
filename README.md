@@ -1,4 +1,4 @@
-# agent-web (`web`)
+# agent-web-cli (`web`)
 
 给 AI agent 用的网页访问命令行工具。通过**本地网络或你配置的 HTTP 代理**访问网页，把页面转成适合模型阅读的 markdown，并用你自己的 **SearXNG** 做搜索。
 
@@ -10,26 +10,15 @@
 
 只做 HTTP 请求（不渲染 JavaScript、不登录），可编译成单文件二进制。
 
-## 验证状态（请先看这里）
-
-这个项目是在一个无法访问 npm 仓库的沙箱里写的，所以验证情况分两部分：
-
-| 部分 | 状态 |
-|---|---|
-| 代理解析、SSRF 防护、HTTP 客户端（重定向、超时、重试、大小上限）、分页、大纲/章节/BM25、SearXNG 调用与结果规范化、sitemap 解析、缓存、配置、CLI 全部命令的退出码和错误输出（JSON、Markdown、纯文本内容） | **已测试**：163 个测试通过（含对本地 mock 服务器和 mock 代理的端到端测试），并做过变异检查确认测试有效 |
-| 单文件二进制构建 | 在使用占位依赖的临时副本上构建并运行成功；**用真实依赖的构建没有跑过** |
-| **HTML → markdown**（Readability 提取、清洗、Turndown 转换）、**RSS/Atom 转换**、**`web map` 的页面链接兜底** | **没有运行过**：依赖 `@mozilla/readability`、`linkedom`、`turndown`，沙箱装不上。`tests/html.test.ts` 已写好（21 个测试），装完依赖后会自动运行 |
-| TypeScript 类型检查（`tsc`） | **没有跑过**：同样因为缺依赖和类型包 |
-
-装好依赖后请先执行：
+## 验证状态
 
 ```bash
 bun install
-bun test          # 期望 184 个测试，其中 html.test.ts 的 21 个此前从未运行
-bun run typecheck
+bun test          # 184 个测试全部通过
+bun run typecheck # 无类型错误
 ```
 
-`html.test.ts` 的断言故意写得宽松（`toContain`），失败时通常说明真实行为有问题，而不是格式细节。
+单文件二进制已用真实依赖构建并运行验证，包含代理环境变量的重新执行路径（见 `DESIGN.md` 3.5）。
 
 ## 安装与构建
 
@@ -47,7 +36,7 @@ bash scripts/build.sh all          # 交叉编译 linux/macOS/windows（需要�
 ## 配置
 
 ```bash
-web config init     # 写入模板到 ~/.config/agent-web/config.json（权限 600）
+web config init     # 写入模板到 ~/.config/agent-web-cli/config.json（权限 600）
 web config          # 查看生效配置（密钥已打码）
 web doctor          # 检查代理和 SearXNG 是否可用
 ```
@@ -90,7 +79,7 @@ web doctor          # 检查代理和 SearXNG 是否可用
 - `NO_PROXY` 支持 `*`、域名后缀、`host:port`、IPv4 CIDR；对环境变量和配置文件里的代理生效，**显式 `--proxy` 不受它影响**。配置文件的 `proxy.noProxy` 优先于环境变量 `NO_PROXY`。
 - 访问 `localhost` / 127.x 永远直连。
 - 只支持 **HTTP/HTTPS 代理**。给了 `socks5://` 会得到明确的配置错误（退出码 8），请改用代理工具的 HTTP 端口。
-- 代理路由完全由本工具决定：启动时会读取 shell 里的代理变量并从进程环境中移除，原因见 `DESIGN.md`。
+- 代理路由完全由本工具决定：如果启动时环境里有代理变量，工具会带着清理过的环境重新执行自身（原值通过 `WEB_PROXY_ENV_SNAPSHOT` 传给子进程），原因见 `DESIGN.md`。
 
 ## 命令速查
 

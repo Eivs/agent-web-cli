@@ -39,7 +39,7 @@ export async function runDoctor(argv: string[], config: Config): Promise<Command
   const info = (m: string) => lines.push(`       ${m}`);
 
   const path = configPath();
-  lines.push("agent-web doctor", "");
+  lines.push("agent-web-cli doctor", "");
   existsSync(path) ? ok(`config file: ${path}`) : info(`config file: none at ${path} (using defaults and environment)`);
 
   // ---- proxy

@@ -1,7 +1,8 @@
 {
-  "name": "agent-web",
+  "name": "agent-web-cli",
   "version": "0.1.0",
-  "description": "Web CLI for AI agents: fetch pages as markdown, search via SearXNG, map sites. Local network and proxy aware.",
+  "description": "Web access CLI for AI agents: fetch pages as token-efficient markdown, search via SearXNG, map sites. HTTP-only, proxy-aware, SSRF-safe.",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "web": "src/cli.ts"

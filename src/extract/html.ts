@@ -126,7 +126,11 @@ function firstSrcsetUrl(srcset: string | null): string | undefined {
 }
 
 /** Normalise links, images and tables in the chosen content, then return its HTML. */
-function prepareFragment(contentHtml: string, base: string, opts: HtmlOptions): { html: string; warnings: string[] } {
+function prepareFragment(
+  contentHtml: string,
+  base: string,
+  opts: HtmlOptions,
+): { html: string; warnings: string[]; links: string[] } {
   const { document: doc } = parseHTML(`<!doctype html><html><body><div id="__root">${contentHtml}</div></body></html>`);
   const root = doc.getElementById("__root")!;
   const warnings: string[] = [];
@@ -160,7 +164,10 @@ function prepareFragment(contentHtml: string, base: string, opts: HtmlOptions): 
         index.push(abs.href);
         n = index.length;
       }
-      a.replaceWith(doc.createTextNode(`${text} [${n}]`));
+      // Rendered by the Turndown rule below: a plain text node would come out
+      // as "\[1\]", because Turndown escapes brackets in text.
+      a.setAttribute("data-web-link", String(n));
+      a.removeAttribute("title");
     } else {
       a.setAttribute("href", abs.href);
       a.removeAttribute("title");
@@ -187,7 +194,8 @@ function prepareFragment(contentHtml: string, base: string, opts: HtmlOptions): 
       }
       img.remove();
     } else if (opts.images === "alt" && alt.length >= 2) {
-      img.replaceWith(doc.createTextNode(`[image: ${alt}]`));
+      // Rendered by the Turndown rule below, so the brackets stay unescaped.
+      img.setAttribute("data-web-image", "alt");
     } else {
       img.remove();
     }
@@ -207,12 +215,7 @@ function prepareFragment(contentHtml: string, base: string, opts: HtmlOptions): 
     }
   }
 
-  if (opts.links === "index" && index.length) {
-    const list = doc.createElement("div");
-    list.innerHTML = `<h2>Links</h2><p>${index.map((u, i) => `[${i + 1}] ${u}`).join("<br>")}</p>`;
-    root.appendChild(list);
-  }
-  return { html: root.innerHTML, warnings };
+  return { html: root.innerHTML, warnings, links: index };
 }
 
 let turndown: TurndownService | null = null;
@@ -227,6 +230,23 @@ function getTurndown(): TurndownService {
     linkStyle: "inlined",
   });
   td.use(gfm);
+  // These markers are rendered here rather than as text nodes: Turndown escapes
+  // brackets in text ("\[image: alt\]", "\[1\]"), which diverges from the
+  // documented output and from what agents expect.
+  td.addRule("webImageAlt", {
+    filter: (node) => node.nodeName === "IMG" && node.getAttribute("data-web-image") === "alt",
+    replacement: (_content, node) => {
+      const alt = collapseWhitespace(node.getAttribute("alt") ?? "");
+      return alt ? `[image: ${alt.replace(/[[\]]/g, "\\$&")}]` : "";
+    },
+  });
+  td.addRule("webLinkIndex", {
+    filter: (node) => node.nodeName === "A" && node.getAttribute("data-web-link") !== null,
+    replacement: (content, node) => {
+      const n = node.getAttribute("data-web-link");
+      return content ? `${content} [${n}]` : `[${n}]`;
+    },
+  });
   turndown = td;
   return td;
 }
@@ -293,7 +313,9 @@ export function htmlToMarkdown(html: string, pageUrl: string, opts: HtmlOptions)
     const fallbackDoc = parseHTML(document.documentElement.outerHTML).document;
     let article: ReturnType<Readability["parse"]> = null;
     try {
-      article = new Readability(document as unknown as Document, { charThreshold: 300, keepClasses: false }).parse();
+      // keepClasses keeps `class="language-js"` on <code>, which is what makes
+      // Turndown emit a fenced block with its language.
+      article = new Readability(document as unknown as Document, { charThreshold: 300, keepClasses: true }).parse();
     } catch {
       article = null;
     }
@@ -320,7 +342,11 @@ export function htmlToMarkdown(html: string, pageUrl: string, opts: HtmlOptions)
 
   const prepared = prepareFragment(contentHtml, base, opts);
   warnings.push(...prepared.warnings);
-  const markdown = tidyMarkdown(getTurndown().turndown(prepared.html));
+  let markdown = tidyMarkdown(getTurndown().turndown(prepared.html));
+  if (opts.links === "index" && prepared.links.length) {
+    // Appended after conversion so Turndown cannot escape the "[1]" markers.
+    markdown += "\n\n## Links\n\n" + prepared.links.map((u, i) => `[${i + 1}] ${u}`).join("\n");
+  }
 
   if (markdown.length < 200) {
     warnings.push(

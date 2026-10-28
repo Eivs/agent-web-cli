@@ -24,7 +24,11 @@ beforeAll(() => {
         case "/ok":
           return new Response("hello", { headers: { "content-type": "text/plain; charset=utf-8" } });
         case "/echo-headers":
-          return Response.json(Object.fromEntries(req.headers));
+          const echoed: Record<string, string> = {};
+          req.headers.forEach((v, k) => {
+            echoed[k] = v;
+          });
+          return Response.json(echoed);
         case "/redir":
           return new Response(null, { status: 302, headers: { location: "/ok" } });
         case "/loop":

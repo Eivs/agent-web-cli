@@ -46,23 +46,56 @@ export function normalizeProxyUrl(raw: string): string {
 }
 
 const PROXY_ENV_KEYS = ["HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy", "NO_PROXY", "no_proxy"];
+/** Holds the original proxy variables on the re-executed child. */
+const SNAPSHOT_VAR = "WEB_PROXY_ENV_SNAPSHOT";
 let capturedEnv: NodeJS.ProcessEnv | null = null;
 
 /**
- * Bun's fetch reads HTTP(S)_PROXY / NO_PROXY from process.env on every call and
- * lets them override both `--no-proxy` and an explicit `proxy` option. To keep
- * routing entirely under this tool's control, the CLI snapshots those variables
- * at startup and removes them from the environment. `resolveProxy` then reads
- * the snapshot, so the shell's proxy settings still apply, but only through our
- * own priority and NO_PROXY rules.
+ * Bun's fetch reads HTTP(S)_PROXY / NO_PROXY from the environment and lets them
+ * override both `--no-proxy` and an explicit `proxy` option. Routing must stay
+ * under this tool's control, so the shell's values are snapshotted and removed,
+ * and `resolveProxy` reads the snapshot.
+ *
+ * The removal has to happen before the process starts: Bun freezes these
+ * variables at launch, so deleting them from `process.env` afterwards has no
+ * effect on fetch(), and a launch-time NO_PROXY still beats an explicit `proxy`
+ * option (oven-sh/bun#35003, still open as of Bun 1.4.4). When any of them is
+ * present, re-exec once with a clean environment and hand the original values
+ * over in SNAPSHOT_VAR.
  */
-export function captureProxyEnv(): void {
+export async function sanitizeProxyEnv(): Promise<void> {
   if (capturedEnv) return;
-  capturedEnv = {};
+
+  const snapRaw = process.env[SNAPSHOT_VAR];
+  if (snapRaw) {
+    try {
+      capturedEnv = JSON.parse(snapRaw) as NodeJS.ProcessEnv;
+    } catch {
+      capturedEnv = {};
+    }
+    for (const k of PROXY_ENV_KEYS) delete process.env[k];
+    return;
+  }
+
+  const snapshot: NodeJS.ProcessEnv = {};
   for (const k of PROXY_ENV_KEYS) {
-    if (process.env[k] !== undefined) capturedEnv[k] = process.env[k];
+    if (process.env[k] !== undefined) snapshot[k] = process.env[k];
     delete process.env[k];
   }
+  capturedEnv = snapshot;
+  if (Object.keys(snapshot).length === 0) return;
+
+  const env: Record<string, string> = {};
+  for (const [k, v] of Object.entries(process.env)) if (v !== undefined) env[k] = v;
+  env[SNAPSHOT_VAR] = JSON.stringify(snapshot);
+  // Dev:      argv = [bunPath, script, ...args]  -> keep the script path.
+  // Compiled: argv = ["bun", "/$bunfs/root/<name>", ...args] -> drop the entry.
+  const args = process.argv[0] === process.execPath ? process.argv.slice(1) : process.argv.slice(2);
+  const child = Bun.spawn([process.execPath, ...args], {
+    stdio: ["inherit", "inherit", "inherit"],
+    env,
+  });
+  process.exit(await child.exited);
 }
 
 /** The shell's proxy variables (the startup snapshot when one was taken). */

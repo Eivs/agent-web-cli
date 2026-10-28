@@ -4,7 +4,7 @@ import SKILL from "../skill/web-cli/SKILL.md" with { type: "text" };
 import { runConfig, CONFIG_HELP } from "./commands/config";
 import type { CommandResult } from "./commands/types";
 import { defaultConfig, loadConfig } from "./config";
-import { captureProxyEnv } from "./net/proxy";
+import { sanitizeProxyEnv } from "./net/proxy";
 import { EXIT_CODES, WebError } from "./util/errors";
 
 const HELP = `web ${pkg.version} - web access for AI agents (HTTP only, proxy aware)
@@ -81,8 +81,8 @@ async function dispatch(argv: string[]): Promise<CommandResult> {
 }
 
 async function main(): Promise<number> {
-  captureProxyEnv();
   try {
+    await sanitizeProxyEnv();
     const result = await dispatch(process.argv.slice(2));
     await writeOut(result.stdout);
     return result.exitCode ?? 0;

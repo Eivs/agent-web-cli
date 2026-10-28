@@ -43,7 +43,7 @@ const ARTICLE = `<!doctype html><html lang="en"><head><title>Fallback Title | Si
 <h1>Great Article</h1>
 <p>${FILLER.repeat(3)}See the <a href="/rel/link?x=1" title="t">relative link</a> and the <a href="https://other.com/abs">absolute link</a> and <a href="#frag">a fragment</a>.</p>
 <h2>Details</h2>
-<p>${FILLER.repeat(3)}Details paragraph marker.</p>
+<p class="details-mark">${FILLER.repeat(3)}Details paragraph marker.</p>
 <table><tr><td>Name</td><td>Value</td></tr><tr><td>alpha</td><td>1</td></tr></table>
 <pre><code class="language-js">const a = 1;
 console.log(a);</code></pre>
@@ -61,6 +61,17 @@ console.log(a);</code></pre>
 
 const PAGE = "https://example.com/articles/one";
 const opts = { links: "inline", images: "alt" } as const;
+
+/** Front-matter value; JSON-quoted values (spaces, colons) are unquoted. */
+const headerValue = (out: string, key: string): string | undefined => {
+  const raw = out.match(new RegExp(`^${key}: (.*)$`, "m"))?.[1];
+  if (raw === undefined || !raw.startsWith('"')) return raw;
+  try {
+    return JSON.parse(raw) as string;
+  } catch {
+    return raw;
+  }
+};
 
 suite("html -> markdown", () => {
   test("extracts the article, drops page chrome, and converts structure", () => {
@@ -136,7 +147,7 @@ suite("html -> markdown", () => {
   });
 
   test("--selector converts only that region; a miss is reported", () => {
-    const r = html!.htmlToMarkdown(ARTICLE, PAGE, { ...opts, selector: "h2 + p" });
+    const r = html!.htmlToMarkdown(ARTICLE, PAGE, { ...opts, selector: ".details-mark" });
     expect(r.extractor).toBe("selector");
     expect(r.markdown).toContain("Details paragraph marker");
     expect(r.markdown).not.toContain("Second part marker");
@@ -144,7 +155,7 @@ suite("html -> markdown", () => {
   });
 
   test("--exclude removes matching elements first", () => {
-    const md = html!.htmlToMarkdown(ARTICLE, PAGE, { ...opts, exclude: ["h2 + p"] }).markdown;
+    const md = html!.htmlToMarkdown(ARTICLE, PAGE, { ...opts, exclude: [".details-mark"] }).markdown;
     expect(md).not.toContain("Details paragraph marker");
     expect(md).toContain("Second part marker");
   });
@@ -257,8 +268,8 @@ suite("fetch and map through the CLI (HTML)", () => {
   test("fetch returns markdown with title, author and extractor in the header", async () => {
     const r = await web(["fetch", `${base}/article`, "--allow-private"]);
     expect(r.code).toBe(0);
-    expect(r.out).toContain("title: Great Article");
-    expect(r.out).toContain("author: Jane Doe");
+    expect(headerValue(r.out, "title")).toBe("Great Article");
+    expect(headerValue(r.out, "author")).toBe("Jane Doe");
     expect(r.out).toContain("extractor: readability");
     expect(r.out).toContain("Details paragraph marker");
     expect(r.out).not.toContain("HIDDEN-STYLE");

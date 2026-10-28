@@ -71,7 +71,7 @@ YAML 头（`url`、`final_url`、`title`、`author`、`published`、`lang`、`st
 ### 3.5 网络层
 
 - **代理路由**：`--no-proxy` > `--proxy` > 配置 > 环境变量；`NO_PROXY` 支持后缀/端口/CIDR；回环直连。
-- **为什么启动时移除环境里的代理变量**：实测 Bun 的 `fetch` 每次调用都读 `process.env` 里的 `HTTP(S)_PROXY`/`NO_PROXY`，并且 `proxy: ""` 或 `undefined` 关不掉；环境里的 `NO_PROXY` 匹配目标时，甚至会让显式传入的 `proxy` 选项失效。这样 `--no-proxy`、`--proxy` 和 NO_PROXY 例外都会被 Bun 悄悄覆盖。所以 CLI 启动时快照这些变量再删除，路由决定完全由 `resolveProxy` 做，并通过 `proxy` 选项显式传给 `fetch`。端到端测试覆盖了这几种组合。
+- **为什么启动时重新执行一次进程**：Bun 的 `fetch` 会让环境里的 `HTTP(S)_PROXY`/`NO_PROXY` 覆盖 `--no-proxy` 和显式 `proxy` 选项；而这些变量在**进程启动时就被固化**，之后再 `delete process.env.HTTP_PROXY` 对 `fetch` 无效，启动时的 `NO_PROXY` 依然会压过显式 `proxy`（oven-sh/bun#35003，Bun 1.4.4 仍未合并）。所以只要启动环境里有这些变量，CLI 就清理环境、把原值放进 `WEB_PROXY_ENV_SNAPSHOT`，然后重新执行自身；子进程启动时环境是干净的，路由完全由 `resolveProxy` 决定，并通过 `proxy` 选项显式传给 `fetch`。代价是这种情况下多一次进程启动（几十毫秒）。端到端测试覆盖了这几种组合。
 - **请求**：手动处理重定向（最多 8 跳，每跳都做 SSRF 检查）；响应体 10 MB 上限，超出则截断并在头里警告；超时默认 30 秒；网络错误和 429/502/503/504 指数退避重试（默认 2 次，`Retry-After` 超过 5 秒则不等）。
 - **默认请求头**：浏览器风格的 User-Agent；`Accept` 把 `text/markdown` 排在最前，部分站点会直接返回 markdown，这样可以跳过 HTML 转换。
 - **编码**：按 `Content-Type` charset、BOM、`<meta charset>` 解码；GBK、Big5、Shift_JIS 等已验证可用；不认识的编码退回 UTF-8 并警告。
