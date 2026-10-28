@@ -42,9 +42,13 @@ jobs:
       - name: Smoke test the Linux binary
         run: ./dist/web-linux-x64 --version
 
-      - name: Checksums
+      - name: Compress and checksum
         run: |
           cd dist
+          for f in web-*; do
+            case "$f" in *.gz) continue ;; esac
+            gzip -9 -k -f "$f"
+          done
           sha256sum web-* > SHA256SUMS
           cat SHA256SUMS
 

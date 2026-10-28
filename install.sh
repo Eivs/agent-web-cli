@@ -76,22 +76,33 @@ echo "Installing $asset $VERSION"
 tmp=$(mktemp -d 2>/dev/null || mktemp -d -t web-install)
 trap 'rm -rf "$tmp"' EXIT
 
-if ! "${CURL[@]}" "$base/$asset" -o "$tmp/$asset"; then
-  fail "download failed: $base/$asset (no asset for $os/$arch in this release?)"
+# Prefer the gzip asset (~1/4 the size); older releases only have the raw file.
+compressed=0
+if "${CURL[@]}" "$base/$asset.gz" -o "$tmp/$asset.gz" 2>/dev/null; then
+  compressed=1
+  dl="$asset.gz"
+elif "${CURL[@]}" "$base/$asset" -o "$tmp/$asset"; then
+  dl="$asset"
+else
+  fail "download failed: $base/$asset(.gz) (no asset for $os/$arch in this release?)"
 fi
 
 if "${CURL[@]}" "$base/SHA256SUMS" -o "$tmp/SHA256SUMS" 2>/dev/null; then
-  if grep -q " $asset\$" "$tmp/SHA256SUMS"; then
-    ( cd "$tmp" && grep " $asset\$" SHA256SUMS > "$asset.sha256" )
+  if grep -q " $dl\$" "$tmp/SHA256SUMS"; then
+    ( cd "$tmp" && grep " $dl\$" SHA256SUMS > "$dl.sha256" )
     if command -v sha256sum >/dev/null 2>&1; then
-      ( cd "$tmp" && sha256sum -c "$asset.sha256" >/dev/null ) || fail "checksum verification failed"
+      ( cd "$tmp" && sha256sum -c "$dl.sha256" >/dev/null ) || fail "checksum verification failed"
     else
-      ( cd "$tmp" && shasum -a 256 -c "$asset.sha256" >/dev/null ) || fail "checksum verification failed"
+      ( cd "$tmp" && shasum -a 256 -c "$dl.sha256" >/dev/null ) || fail "checksum verification failed"
     fi
     echo "Checksum OK"
   fi
 else
   echo "Warning: SHA256SUMS not found for this release; skipping verification" >&2
+fi
+
+if [ "$compressed" = 1 ]; then
+  gzip -dc "$tmp/$asset.gz" > "$tmp/$asset" || fail "corrupted gzip: $asset.gz"
 fi
 
 mkdir -p "$INSTALL_DIR"

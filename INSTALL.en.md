@@ -54,6 +54,13 @@ mv web-darwin-arm64 ~/.local/bin/web
 web --version
 ```
 
+Releases also ship a same-named `.gz` (about a quarter of the size); the installer prefers it. To install a `.gz` by hand:
+
+```bash
+gzip -dc web-darwin-arm64.gz > web-darwin-arm64
+chmod +x web-darwin-arm64
+```
+
 ## Build from source
 
 Requires [Bun](https://bun.sh) ≥ 1.1:

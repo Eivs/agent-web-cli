@@ -54,6 +54,13 @@ mv web-darwin-arm64 ~/.local/bin/web
 web --version
 ```
 
+Release 里同时提供同名的 `.gz`（约为原大小的 1/4），安装脚本会优先下载它。手动下载 `.gz` 时先解压：
+
+```bash
+gzip -dc web-darwin-arm64.gz > web-darwin-arm64
+chmod +x web-darwin-arm64
+```
+
 ## 从源码构建
 
 需要 [Bun](https://bun.sh) ≥ 1.1：

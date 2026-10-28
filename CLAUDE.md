@@ -23,7 +23,7 @@ bash scripts/build.sh all                # 交叉编译 5 个目标（需联网�
 
 没有 lint 脚本，`tsc --noEmit` 是唯一的静态检查。
 
-发版：`package.json` 的 `version` 与 tag 一致后 `git push origin v0.1.1`，`.github/workflows/release.yml` 会跑测试、交叉编译 5 个平台、生成 `SHA256SUMS` 并创建 Release；`install.sh` 从 Release 下载。
+发版：`package.json` 的 `version` 与 tag 一致后 `git push origin v0.1.1`，`.github/workflows/release.yml` 会跑测试、交叉编译 5 个平台、额外生成 `.gz` 压缩包与 `SHA256SUMS` 并创建 Release；`install.sh` 优先下载 `.gz`，旧 Release 没有 `.gz` 时回退到原始文件。
 
 ## 架构
 
