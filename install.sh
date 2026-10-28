@@ -13,6 +13,9 @@ BASE_URL="${WEB_BASE_URL:-https://github.com/$REPO/releases/download}"
 INSTALL_SKILL=1
 FORCE=0
 
+# Large binaries over a flaky link: retry transient failures.
+CURL=(curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 20)
+
 usage() {
   cat <<'USAGE'
 Install the `web` CLI from GitHub Releases.
@@ -61,7 +64,7 @@ asset="web-${os}-${arch}"
 if [ "$VERSION" = "latest" ]; then
   command -v curl >/dev/null 2>&1 || fail "curl is required"
   echo "Resolving the latest release of $REPO ..."
-  tag=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
+  tag=$("${CURL[@]}" "https://api.github.com/repos/$REPO/releases/latest" \
     | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n 1)
   [ -n "$tag" ] || fail "could not resolve the latest release (rate limited?) - pass --version vX.Y.Z"
   VERSION="$tag"
@@ -73,11 +76,11 @@ echo "Installing $asset $VERSION"
 tmp=$(mktemp -d 2>/dev/null || mktemp -d -t web-install)
 trap 'rm -rf "$tmp"' EXIT
 
-if ! curl -fsSL "$base/$asset" -o "$tmp/$asset"; then
+if ! "${CURL[@]}" "$base/$asset" -o "$tmp/$asset"; then
   fail "download failed: $base/$asset (no asset for $os/$arch in this release?)"
 fi
 
-if curl -fsSL "$base/SHA256SUMS" -o "$tmp/SHA256SUMS" 2>/dev/null; then
+if "${CURL[@]}" "$base/SHA256SUMS" -o "$tmp/SHA256SUMS" 2>/dev/null; then
   if grep -q " $asset\$" "$tmp/SHA256SUMS"; then
     ( cd "$tmp" && grep " $asset\$" SHA256SUMS > "$asset.sha256" )
     if command -v sha256sum >/dev/null 2>&1; then
